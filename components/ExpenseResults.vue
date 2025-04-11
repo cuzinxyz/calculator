@@ -60,7 +60,14 @@
       <div>
         <h3 class="text-lg font-semibold mb-2">Giao dịch cần thực hiện</h3>
         <div class="space-y-4">
-          <div v-for="(transaction, index) in transactions" :key="index" class="border p-4 rounded-lg">
+          <div 
+            v-for="transaction in mergedTransactions" 
+            :key="transaction.id || `${transaction.from}-${transaction.to}-${transaction.amount}`"
+            :class="[
+              'border p-4 rounded-lg transition-colors duration-200',
+              transaction.completed ? 'bg-gray-100' : 'bg-white'
+            ]"
+          >
             <div class="flex justify-between items-center">
               <div>
                 <span class="font-medium">{{ transaction.from }}</span>
@@ -68,12 +75,31 @@
                 <span class="font-medium">{{ transaction.to }}</span>
                 <span class="ml-2">{{ formatCurrency(transaction.amount) }}</span>
               </div>
-              <button
-                @click="showQR(transaction)"
-                class="text-green-500 hover:text-green-600"
-              >
-                Tạo QR chuyển tiền
-              </button>
+              <div class="flex items-center space-x-2">
+                <button
+                  @click="toggleTransactionStatus(transaction)"
+                  :class="[
+                    'px-3 py-1 rounded-md text-sm',
+                    transaction.completed 
+                      ? 'bg-gray-200 text-gray-700' 
+                      : 'bg-green-100 text-green-700'
+                  ]"
+                >
+                  {{ transaction.completed ? 'Đã chuyển' : 'Đánh dấu đã chuyển' }}
+                </button>
+                <button
+                  @click="showQR(transaction)"
+                  class="text-green-500 hover:text-green-600"
+                >
+                  Tạo QR chuyển tiền
+                </button>
+              </div>
+            </div>
+            <div 
+              v-if="transaction.completed" 
+              class="text-sm text-gray-500 mt-2"
+            >
+              Hoàn thành: {{ formatDateTime(transaction.completed_at) }}
             </div>
           </div>
         </div>
@@ -234,8 +260,95 @@ const deleteExpense = async (id: string) => {
 
 defineEmits(['edit', 'refresh'])
 
-onMounted(() => {
-  fetchUsers()
+const savedTransactions = ref([])
+
+// Fetch saved transactions from database
+const loadSavedTransactions = async () => {
+  const { data, error } = await useSupabaseClient()
+    .from('transactions')
+    .select('*')
+  
+  if (error) {
+    console.error('Error loading transactions:', error)
+    return
+  }
+  
+  savedTransactions.value = data
+}
+
+// Merge computed transactions with saved ones
+const mergedTransactions = computed(() => {
+  const computedTxs = transactions.value
+  
+  return computedTxs.map(tx => {
+    const savedTx = savedTransactions.value.find(saved => 
+      saved.from_user === tx.from && 
+      saved.to_user === tx.to && 
+      Number(saved.amount) === Number(tx.amount)
+    )
+    
+    return {
+      ...tx,
+      id: savedTx?.id,
+      completed: savedTx?.completed || false,
+      completed_at: savedTx?.completed_at
+    }
+  })
+})
+
+const toggleTransactionStatus = async (transaction) => {
+  const supabase = useSupabaseClient()
+  
+  try {
+    if (transaction.id) {
+      // Update existing transaction
+      const { error } = await supabase
+        .from('transactions')
+        .update({ 
+          completed: !transaction.completed,
+          completed_at: !transaction.completed ? new Date().toISOString() : null
+        })
+        .eq('id', transaction.id)
+      
+      if (error) throw error
+    } else {
+      // Create new transaction
+      const { error } = await supabase
+        .from('transactions')
+        .insert([{
+          from_user: transaction.from,
+          to_user: transaction.to,
+          amount: transaction.amount,
+          completed: true,
+          completed_at: new Date().toISOString()
+        }])
+      
+      if (error) throw error
+    }
+    
+    await loadSavedTransactions()
+  } catch (error) {
+    console.error('Error updating transaction:', error)
+  }
+}
+
+const formatDateTime = (dateString: string) => {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleString('vi-VN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+// Load saved transactions on mount
+onMounted(async () => {
+  await Promise.all([
+    fetchUsers(),
+    loadSavedTransactions()
+  ])
 })
 </script>
 
