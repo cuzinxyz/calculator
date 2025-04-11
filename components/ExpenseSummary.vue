@@ -1,89 +1,11 @@
 <template>
-  <div>
-    <!-- Table cho desktop -->
-    <div class="hidden sm:block overflow-x-auto mb-8">
-      <table class="min-w-full divide-y divide-gray-200">
-        <thead class="bg-gray-50">
-          <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tên chi tiêu</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ngày</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Số tiền</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người trả</th>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Người tham gia</th>
-            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Thao tác</th>
-          </tr>
-        </thead>
-        <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="expense in expenses" :key="expense.id">
-            <td class="px-6 py-4">{{ expense.title }}</td>
-            <td class="px-6 py-4">{{ formatDate(expense.date) }}</td>
-            <td class="px-6 py-4">{{ formatCurrency(expense.amount) }}</td>
-            <td class="px-6 py-4">{{ getPayerName(expense.payer) }}</td>
-            <td class="px-6 py-4">{{ expense.participants.join(', ') }}</td>
-            <td class="px-6 py-4 text-right space-x-2">
-              <button
-                v-if="role === 'spender'"
-                @click="$emit('edit', expense)"
-                class="text-indigo-600 hover:text-indigo-900"
-              >
-                Sửa
-              </button>
-              <button
-                v-if="role === 'spender'"
-                @click="deleteExpense(expense.id)"
-                class="text-red-600 hover:text-red-900"
-              >
-                Xóa
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Card layout cho mobile -->
-    <div class="sm:hidden space-y-4 mb-8">
-      <div v-for="expense in expenses" :key="expense.id" 
-        class="bg-gray-50 rounded-lg p-4 space-y-2">
-        <div class="font-medium">{{ expense.title }}</div>
-        <div class="grid grid-cols-2 text-sm gap-2">
-          <div class="text-gray-500">Ngày:</div>
-          <div>{{ formatDate(expense.date) }}</div>
-          
-          <div class="text-gray-500">Số tiền:</div>
-          <div class="font-medium text-green-600">{{ formatCurrency(expense.amount) }}</div>
-          
-          <div class="text-gray-500">Người trả:</div>
-          <div>{{ getPayerName(expense.payer) }}</div>
-          
-          <div class="text-gray-500">Người tham gia:</div>
-          <div>{{ expense.participants.join(', ') }}</div>
-        </div>
-        <div class="flex justify-end space-x-3 pt-2 border-t border-gray-200 mt-2">
-          <button
-            v-if="role === 'spender'"
-            @click="$emit('edit', expense)"
-            class="text-indigo-600 hover:text-indigo-900 text-sm"
-          >
-            Sửa
-          </button>
-          <button
-            v-if="role === 'spender'"
-            @click="deleteExpense(expense.id)"
-            class="text-red-600 hover:text-red-900 text-sm"
-          >
-            Xóa
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <h2 class="text-xl sm:text-2xl font-bold mb-4">Kết quả chia tiền</h2>
+  <div class="bg-white rounded-lg shadow p-6">
+    <h2 class="text-xl font-bold mb-6">Kết quả chia tiền</h2>
     
-    <div class="space-y-6">
+    <div class="space-y-10">
       <!-- Tổng kết cá nhân -->
       <div>
-        <h3 class="text-lg font-semibold mb-2">Tổng kết cá nhân</h3>
+        <h3 class="text-md font-semibold mb-2">Tổng kết cá nhân</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div v-for="(amount, user) in personalTotals" :key="user" 
             class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
@@ -100,7 +22,7 @@
 
       <!-- Giao dịch cần thực hiện -->
       <div>
-        <h3 class="text-lg font-semibold mb-2">Giao dịch cần thực hiện</h3>
+        <h3 class="text-md font-semibold mb-2">Giao dịch cần thực hiện</h3>
         <div class="space-y-4">
           <div 
             v-for="transaction in mergedTransactions" 
@@ -125,14 +47,20 @@
               <div class="flex flex-col space-y-2">
                 <button
                   @click="toggleTransactionStatus(transaction)"
+                  :disabled="loadingTransactions.has(transaction.id || `${transaction.from}-${transaction.to}`)"
                   :class="[
-                    'w-full py-2 px-3 rounded-md text-sm font-medium',
-                    transaction.completed 
-                      ? 'bg-gray-200 text-gray-700' 
-                      : 'bg-green-100 text-green-700'
+                    'w-full py-2 px-3 rounded-md text-sm font-medium transition-colors duration-200',
+                    loadingTransactions.has(transaction.id || `${transaction.from}-${transaction.to}`)
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : transaction.completed 
+                        ? 'bg-gray-200 text-gray-700' 
+                        : 'bg-green-100 text-green-700'
                   ]"
                 >
                   {{ transaction.completed ? 'Đã chuyển' : 'Đánh dấu đã chuyển' }}
+                  <span v-if="loadingTransactions.has(transaction.id || `${transaction.from}-${transaction.to}`)">
+                    ...
+                  </span>
                 </button>
                 <button
                   @click="showQR(transaction)"
@@ -154,14 +82,20 @@
               <div class="flex items-center space-x-2">
                 <button
                   @click="toggleTransactionStatus(transaction)"
+                  :disabled="loadingTransactions.has(transaction.id || `${transaction.from}-${transaction.to}`)"
                   :class="[
-                    'px-3 py-1 rounded-md text-sm',
-                    transaction.completed 
-                      ? 'bg-gray-200 text-gray-700' 
-                      : 'bg-green-100 text-green-700'
+                    'px-3 py-1 rounded-md text-sm transition-colors duration-200',
+                    loadingTransactions.has(transaction.id || `${transaction.from}-${transaction.to}`)
+                      ? 'bg-gray-300 cursor-not-allowed'
+                      : transaction.completed 
+                        ? 'bg-gray-200 text-gray-700' 
+                        : 'bg-green-100 text-green-700'
                   ]"
                 >
                   {{ transaction.completed ? 'Đã chuyển' : 'Đánh dấu đã chuyển' }}
+                  <span v-if="loadingTransactions.has(transaction.id || `${transaction.from}-${transaction.to}`)">
+                    ...
+                  </span>
                 </button>
                 <button
                   @click="showQR(transaction)"
@@ -182,10 +116,11 @@
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- QR Code Modal -->
-    <div v-if="showQRModal" 
-      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+  <!-- QR Code Modal -->
+  <div v-if="showQRModal" 
+      class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 !m-0">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
         <div class="p-4 border-b">
           <h3 class="text-lg font-bold">QR Code chuyển khoản</h3>
@@ -193,58 +128,71 @@
         <div class="p-4">
           <img :src="currentQRUrl" alt="QR Code" class="w-full">
         </div>
-        <div class="p-4 border-t">
+        <div class="p-4 border-t grid grid-cols-2 gap-3">
+          <button
+            @click="downloadQr"
+            class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+          >
+            Tải xuống
+          </button>
+
           <button
             @click="showQRModal = false"
-            class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
+            class="w-full bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700"
           >
             Đóng
           </button>
         </div>
       </div>
     </div>
-  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '~/stores/useUserStore'
 import { storeToRefs } from 'pinia'
 
-const props = defineProps<{
-  expenses: any[]
-  role: 'payer' | 'spender'
-}>()
-
-const emit = defineEmits(['edit', 'refresh'])
-
 const userStore = useUserStore()
 const { users } = storeToRefs(userStore)
-const showQRModal = ref(false)
 const currentQRUrl = ref('')
+const showQRModal = ref(false)
 const savedTransactions = ref([])
+// Thêm ref để track loading state cho từng transaction
+const loadingTransactions = ref(new Set())
 
-// Optimize: Memoize personal totals calculation
+const props = defineProps<{
+  expenses: any[]
+}>()
+
+// Format currency
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  }).format(amount)
+}
+
+// Get payer name
+const getPayerName = (userId: string) => {
+  const user = users.value.find(u => u.id === userId)
+  return user?.name || 'Unknown'
+}
+
+// Calculate personal totals
 const personalTotals = computed(() => {
   if (!users.value?.length || !props.expenses?.length) return {}
   
-  // Initialize totals với ID của user thay vì name
   const totals = Object.fromEntries(
     users.value.map(user => [user.id, 0])
   )
 
-  // Tính toán cho từng expense
   props.expenses.forEach(expense => {
     const totalParticipants = expense.participants.length
     if (totalParticipants === 0) return
 
-    // Số tiền mỗi người phải trả
     const amountPerPerson = expense.amount / totalParticipants
-
-    // Cộng tiền cho người trả
     totals[expense.payer] += expense.amount
 
-    // Trừ tiền những người tham gia
     expense.participants.forEach(participantName => {
       const participant = users.value.find(u => u.name === participantName)
       if (participant) {
@@ -256,24 +204,22 @@ const personalTotals = computed(() => {
   return totals
 })
 
-// Optimize: Memoize transactions calculation
-const transactions = computed(() => {
+// Calculate transactions
+const mergedTransactions = computed(() => {
   const totals = personalTotals.value
   if (!Object.keys(totals).length) return []
 
-  // Tách người nợ và người cho nợ
   const debtors = []
   const creditors = []
 
   Object.entries(totals).forEach(([userId, amount]) => {
     if (amount < 0) {
-      debtors.push({ id: userId, amount: -amount }) // Đổi dấu để có số dương
+      debtors.push({ id: userId, amount: -amount })
     } else if (amount > 0) {
       creditors.push({ id: userId, amount })
     }
   })
 
-  // Sắp xếp theo số tiền giảm dần
   debtors.sort((a, b) => b.amount - a.amount)
   creditors.sort((a, b) => b.amount - a.amount)
 
@@ -284,7 +230,6 @@ const transactions = computed(() => {
   while (debtorIdx < debtors.length && creditorIdx < creditors.length) {
     const debtor = debtors[debtorIdx]
     const creditor = creditors[creditorIdx]
-
     const amount = Math.min(debtor.amount, creditor.amount)
     
     // Tìm transaction đã lưu
@@ -295,7 +240,9 @@ const transactions = computed(() => {
     result.push({
       from: debtor.id,
       to: creditor.id,
-      amount: Math.round(amount), // Làm tròn số
+      amount: Math.round(amount),
+      fromName: getPayerName(debtor.id),
+      toName: getPayerName(creditor.id),
       completed: existingTransaction?.completed || false,
       completed_at: existingTransaction?.completed_at || null,
       id: existingTransaction?.id
@@ -311,20 +258,11 @@ const transactions = computed(() => {
   return result
 })
 
-// Computed để hiển thị tên người dùng trong giao dịch
-const mergedTransactions = computed(() => {
-  return transactions.value.map(transaction => {
-    const fromUser = users.value.find(u => u.id === transaction.from)
-    const toUser = users.value.find(u => u.id === transaction.to)
-    return {
-      ...transaction,
-      fromName: fromUser?.name || 'Unknown',
-      toName: toUser?.name || 'Unknown'
-    }
-  })
-})
+const showQR = (transaction: any) => {
+  currentQRUrl.value = generateQRUrl(transaction)
+  showQRModal.value = true
+}
 
-// Optimize: Create QR URL generator
 const generateQRUrl = (transaction: any) => {
   const toUser = users.value.find(u => u.id === transaction.to)
   const fromUser = users.value.find(u => u.id === transaction.from)
@@ -335,49 +273,15 @@ const generateQRUrl = (transaction: any) => {
   return `https://qr.sepay.vn/img?acc=${toUser.account_number}&bank=${toUser.bank}&amount=${transaction.amount}&des=${encodeURIComponent(description)}&template=compact&download=false`
 }
 
-const showQR = (transaction: any) => {
-  currentQRUrl.value = generateQRUrl(transaction)
-  showQRModal.value = true
-}
-
-// Utility functions
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND'
-  }).format(amount)
-}
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('vi-VN')
-}
-
-const formatDateTime = (dateString: string) => {
-  if (!dateString) return ''
-  return new Date(dateString).toLocaleString('vi-VN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
-// Database operations
-const loadSavedTransactions = async () => {
-  try {
-    const { data, error } = await useSupabaseClient()
-      .from('transactions')
-      .select('*')
-    
-    if (error) throw error
-    savedTransactions.value = data
-  } catch (error) {
-    console.error('Error loading transactions:', error)
-  }
-}
-
 const toggleTransactionStatus = async (transaction) => {
+  // Kiểm tra nếu transaction đang được xử lý
+  if (loadingTransactions.value.has(transaction.id || `${transaction.from}-${transaction.to}`)) {
+    return
+  }
+
+  const transactionKey = transaction.id || `${transaction.from}-${transaction.to}`
+  loadingTransactions.value.add(transactionKey)
+  
   const supabase = useSupabaseClient()
   
   try {
@@ -408,24 +312,41 @@ const toggleTransactionStatus = async (transaction) => {
     await loadSavedTransactions()
   } catch (error) {
     console.error('Error updating transaction:', error)
+  } finally {
+    // Xóa loading state sau khi hoàn thành
+    loadingTransactions.value.delete(transactionKey)
   }
 }
 
-const deleteExpense = async (id: string) => {
-  if (!confirm('Bạn có chắc chắn muốn xóa chi tiêu này?')) return
-
+// Database operations
+const loadSavedTransactions = async () => {
   try {
-    const { error } = await useSupabaseClient()
-      .from('expenses')
-      .delete()
-      .eq('id', id)
+    const { data, error } = await useSupabaseClient()
+      .from('transactions')
+      .select('*')
     
     if (error) throw error
-    
-    emit('refresh')
+    savedTransactions.value = data
   } catch (error) {
-    console.error('Error deleting expense:', error)
+    console.error('Error loading transactions:', error)
   }
+}
+
+const formatDateTime = (dateString: string) => {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleString('vi-VN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const downloadQr = () => {
+  const url = new URL(currentQRUrl.value)
+  url.searchParams.set('download', 'true')
+  window.location.href = url.toString()
 }
 
 // Initialize component
@@ -435,10 +356,11 @@ onMounted(async () => {
   }
   await loadSavedTransactions()
 })
-
-// Thêm helper function để lấy tên người trả
-const getPayerName = (payerId: string) => {
-  const payer = users.value.find(u => u.id === payerId)
-  return payer?.name || 'Unknown'
-}
 </script>
+
+
+
+
+
+
+

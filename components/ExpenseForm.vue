@@ -984,12 +984,5 @@ watch([splitMethod, () => expense.participants, () => expense.amount], () => {
 .form-control-group {
   @apply relative mb-6;
 }
-
-.form-input {
-  @apply block w-full rounded-md border-gray-300 shadow-sm 
-         py-2.5 px-4 text-base
-         focus:border-green-500 focus:ring-2 focus:ring-green-500 focus:ring-offset-2
-         transition-all duration-200;
-}
 </style>
 

@@ -1,50 +1,87 @@
 <template>
   <div class="p-4 sm:p-6">
-    <h2 class="text-xl sm:text-2xl font-bold mb-4">Quản lý người dùng</h2>
-    
     <!-- Form thêm/sửa user -->
     <form @submit.prevent="handleSubmit" class="mb-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- Tên và Số tài khoản trên cùng một hàng khi >= md -->
         <div>
-          <label class="block text-sm font-medium text-gray-700">Tên</label>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Tên</label>
           <input
             v-model="userForm.name"
             required
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+            class="form-input"
           />
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-gray-700">Số tài khoản</label>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Số tài khoản</label>
           <input
             v-model="userForm.account_number"
-            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
+            class="form-input"
           />
         </div>
-        
-        <div>
-          <label class="block text-sm font-medium text-gray-700">Ngân hàng</label>
-          <div class="relative">
-            <select
-              v-model="userForm.bank"
-              class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"
-            >
-              <option value="">Chọn ngân hàng</option>
-              <option
-                v-for="bank in banks"
+      </div>
+
+      <!-- Ngân hàng chiếm full width -->
+      <div class="mt-4">
+        <label class="block text-sm font-medium text-gray-700 mb-3">Ngân hàng</label>
+        <div class="relative">
+          <input
+            type="text"
+            v-model="bankSearch"
+            @focus="showBankDropdown = true"
+            :placeholder="selectedBankName || 'Tìm ngân hàng...'"
+            class="form-input pl-10 pr-10 w-full"
+          />
+          
+          <!-- Search icon -->
+          <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <MagnifyingGlassIcon class="h-5 w-5 text-gray-400" />
+          </span>
+          
+          <!-- Clear button -->
+          <button
+            v-if="userForm.bank"
+            type="button"
+            @click="clearSelectedBank"
+            class="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+          >
+            <XMarkIcon class="h-5 w-5" />
+          </button>
+
+          <!-- Dropdown -->
+          <div
+            v-show="showBankDropdown"
+            class="absolute z-10 mt-1 w-full rounded-md bg-white shadow-lg max-h-60 overflow-auto border border-gray-200"
+          >
+            <!-- Bank list -->
+            <div v-if="filteredBanks.length > 0" class="py-1">
+              <button
+                v-for="bank in filteredBanks"
                 :key="bank.code"
-                :value="bank.code"
+                @click="selectBank(bank)"
+                class="w-full px-4 py-2 text-sm text-left hover:bg-gray-100 flex items-center justify-between"
+                :class="{'bg-green-50': userForm.bank === bank.code}"
               >
-                {{ bank.name }}
-              </option>
-            </select>
-            <div v-if="loading" class="absolute right-2 top-1/2 -translate-y-1/2">
-              <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-green-500"></div>
+                <div class="flex items-center min-w-0 flex-1 mr-2"> <!-- Thêm min-w-0 và flex-1 -->
+                  <span class="font-medium truncate">{{ bank.short_name }}</span>
+                  <span class="text-gray-500 mx-2">-</span>
+                  <span class="text-gray-500 truncate">{{ bank.name }}</span>
+                </div>
+                <span v-if="userForm.bank === bank.code" class="text-green-600 flex-shrink-0"> <!-- Thêm flex-shrink-0 -->
+                  <CheckIcon class="h-5 w-5" />
+                </span>
+              </button>
+            </div>
+
+            <!-- No results -->
+            <div
+              v-else
+              class="px-4 py-2 text-sm text-gray-500 text-center"
+            >
+              Không tìm thấy ngân hàng phù hợp
             </div>
           </div>
-          <p v-if="error" class="mt-1 text-sm text-red-600">
-            Không thể tải danh sách ngân hàng. Vui lòng thử lại sau.
-          </p>
         </div>
       </div>
       
@@ -54,7 +91,7 @@
           @click="resetForm"
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
         >
-          Hủy
+          Reset
         </button>
         <button
           type="submit"
@@ -139,7 +176,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { XMarkIcon, MagnifyingGlassIcon, CheckIcon } from '@heroicons/vue/24/outline'
 import { useBanks } from '~/composables/useBanks'
 import { useUserStore } from '~/stores/useUserStore'
 import { storeToRefs } from 'pinia'
@@ -153,7 +191,30 @@ const userForm = ref({
   bank: ''
 })
 
-const { banks, loading, error, fetchBanks } = useBanks()
+const { banks } = useBanks() // Chỉ cần lấy banks
+
+// Bank selection
+const bankSearch = ref('')
+const showBankDropdown = ref(false)
+
+// Computed property for filtered banks
+const filteredBanks = computed(() => {
+  const search = bankSearch.value.toLowerCase().trim()
+  if (!search) return banks.value
+  
+  return banks.value.filter(bank => 
+    bank.name.toLowerCase().includes(search) ||
+    bank.short_name.toLowerCase().includes(search) ||
+    bank.code.toLowerCase().includes(search)
+  )
+})
+
+// Get selected bank name
+const selectedBankName = computed(() => {
+  if (!userForm.value.bank) return ''
+  const bank = banks.value.find(b => b.code === userForm.value.bank)
+  return bank ? `${bank.short_name} - ${bank.name}` : ''
+})
 
 // Get bank name from code
 const getBankName = (code: string) => {
@@ -222,8 +283,46 @@ const resetForm = () => {
   }
 }
 
-// Load initial data
+// Handle bank focus
+const handleBankFocus = async () => {
+  showBankDropdown.value = true
+  if (banks.value.length === 0) {
+    await fetchBanks()
+  }
+}
+
+// Handle bank selection
+const selectBank = (bank) => {
+  userForm.value.bank = bank.code
+  bankSearch.value = ''
+  showBankDropdown.value = false
+}
+
+// Clear selected bank
+const clearSelectedBank = () => {
+  userForm.value.bank = ''
+  bankSearch.value = ''
+}
+
+// Handle search input
+const handleBankSearch = () => {
+  showBankDropdown.value = true
+}
+
+// Close dropdown when clicking outside
+const handleClickOutside = (event: MouseEvent) => {
+  const target = event.target as HTMLElement
+  if (!target.closest('.relative')) {
+    showBankDropdown.value = false
+  }
+}
+
+// Setup and cleanup click outside listener
 onMounted(() => {
-  fetchBanks()
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleClickOutside)
 })
 </script>

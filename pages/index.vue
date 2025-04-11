@@ -1,6 +1,6 @@
 <template>
-  <div class="min-h-screen bg-green-50">
-    <div class="container mx-auto px-4 py-8">
+  <div class="min-h-screen bg-green-50 flex flex-col">
+    <div class="container mx-auto px-4 py-8 flex-grow">
       <h1 class="text-4xl font-bold text-center text-green-800 mb-8">EzSplit</h1>
 
       <!-- Role Selection khi mới vào -->
@@ -25,7 +25,6 @@
         </div>
       </div>
 
-      <!-- Main Content sau khi chọn role -->
       <div v-else>
         <!-- Header với nút đổi role và quản lý user -->
         <div class="flex justify-between items-center mb-6">
@@ -46,34 +45,36 @@
         </div>
 
         <!-- Content cho người trả tiền -->
-        <ExpenseResults 
-          v-if="selectedRole === 'payer'"
-          :expenses="expenses" 
-          :role="selectedRole"
-          @refresh="loadExpenses"
-        />
+        <div v-if="selectedRole === 'payer'" class="max-w-5xl mx-auto space-y-8">
+          <ExpenseList
+            :expenses="expenses"
+            :current-page="currentPage"
+            :total-items="totalExpenses"
+            :items-per-page="itemsPerPage"
+            :loading="loading"
+            @page-change="loadExpenses"
+          />
+          
+          <ExpenseSummary :expenses="expenses" />
+        </div>
 
         <!-- Content cho người chi tiền -->
-        <div v-else-if="selectedRole === 'spender'" class="space-y-6">
-          <!-- Wrap ExpenseForm trong div để có thể scroll đến -->
-          <div id="expense-form">
-            <ExpenseForm 
-              :editing-expense="editingExpense"
-              :expenses="expenses"
-              @save="handleExpenseSave" 
-              @cancel="editingExpense = null"
-            />
-          </div>
-          
-          <!-- Thêm divider để phân tách form và danh sách -->
-          <div class="border-t border-gray-200 my-6"></div>
-
-          <ExpenseResults 
-            :expenses="expenses" 
-            :role="selectedRole"
-            @edit="editExpense"
-            @refresh="loadExpenses"
+        <div v-if="selectedRole === 'spender'" class="max-w-5xl mx-auto space-y-8">
+          <ExpenseForm 
+            :expenses="expenses"
+            @save="handleExpenseSave" 
           />
+          
+          <ExpenseList
+            :expenses="expenses"
+            :current-page="currentPage"
+            :total-items="totalExpenses"
+            :items-per-page="itemsPerPage"
+            :loading="loading"
+            @page-change="loadExpenses"
+          />
+          
+          <!-- <ExpenseSummary :expenses="expenses" /> -->
         </div>
       </div>
 
@@ -82,11 +83,12 @@
         <UserManagement />
       </Modal>
 
-      <footer class="text-center mt-8 text-sm text-gray-600">
-        <p>Made with ♥️ by abner</p>
-        <p>&copy; 2025 EzSplit. All rights reserved.</p>
-      </footer>
     </div>
+
+    <footer class="text-center py-4 text-sm text-gray-600 bg-green-50">
+      <p>Made with ♥️ by abner</p>
+      <p>&copy; 2025 EzSplit. All rights reserved.</p>
+    </footer>
   </div>
 </template>
 
@@ -99,20 +101,105 @@ const userStore = useUserStore()
 const { users } = storeToRefs(userStore)
 
 const expenses = ref([])
-const editingExpense = ref(null)
 const selectedRole = ref(null)
+const totalExpenses = ref(0)
+const currentPage = ref(1)
+const itemsPerPage = ref(2)
+const loading = ref(false)
 const showUserManagement = ref(false)
 
-// Xử lý chọn role
+const loadExpenses = async (page = 1) => {
+  console.log('loadExpenses called with page:', page)
+  
+  // Bỏ check duplicate vì đang cần load data lần đầu
+  // if (loading.value || page === currentPage.value) {
+  //   console.log('Skipping duplicate request')
+  //   return
+  // }
+  
+  try {
+    loading.value = true
+    console.log('Loading started')
+    
+    const from = (page - 1) * itemsPerPage.value
+    const to = from + itemsPerPage.value - 1
+    
+    console.log('Fetching range:', from, 'to', to)
+    
+    const supabase = useSupabaseClient()
+    
+    // Luôn fetch count mới
+    const countPromise = supabase
+      .from('expenses')
+      .select('id', { count: 'exact', head: true })
+      
+    const dataPromise = supabase
+      .from('expenses')
+      .select(`
+        id,
+        title,
+        amount,
+        date,
+        payer,
+        participants,
+        split_equally,
+        individual_amounts
+      `)
+      .order('date', { ascending: false })
+      .range(from, to)
+    
+    const [countResponse, dataResponse] = await Promise.all([
+      countPromise,
+      dataPromise
+    ])
+    
+    console.log('Count response:', countResponse)
+    console.log('Data response:', dataResponse)
+
+    if (countResponse.error) {
+      console.error('Count error:', countResponse.error)
+      throw countResponse.error
+    }
+    if (dataResponse.error) {
+      console.error('Data error:', dataResponse.error)
+      throw dataResponse.error
+    }
+
+    // Cập nhật state
+    totalExpenses.value = countResponse.count || 0
+    expenses.value = dataResponse.data || []
+    currentPage.value = page
+    
+    console.log('Updated state:', {
+      totalExpenses: totalExpenses.value,
+      expenses: expenses.value.length,
+      currentPage: currentPage.value
+    })
+  } catch (error) {
+    console.error('Error loading expenses:', error)
+  } finally {
+    loading.value = false
+    console.log('Loading finished')
+  }
+}
+
 const handleRoleSelect = async (role: 'payer' | 'spender') => {
+  console.log('Role selected:', role)
   try {
     selectedRole.value = role
-    // Fetch users cho cả hai role
-    await userStore.fetchUsers()
-    await loadExpenses()
+    if (!users.value.length) {
+      await userStore.fetchUsers()
+    }
+    // Force load expenses
+    await loadExpenses(1)
   } catch (error) {
     console.error('Error in handleRoleSelect:', error)
   }
+}
+
+const handleExpenseSave = async () => {
+  totalExpenses.value = 0
+  await loadExpenses(1)
 }
 
 // Xử lý đổi vai trò
@@ -141,36 +228,8 @@ const closeUserManagement = () => {
   showUserManagement.value = false
 }
 
-const loadExpenses = async () => {
-  try {
-    const { data, error } = await useSupabaseClient()
-      .from('expenses')
-      .select('*')
-      .order('date', { ascending: false })
-    
-    if (error) throw error
-    expenses.value = data
-  } catch (error) {
-    console.error('Error loading expenses:', error)
-  }
-}
-
-const editExpense = (expense) => {
-  editingExpense.value = expense
-}
-
-const handleExpenseSave = async () => {
-  await loadExpenses()
-  editingExpense.value = null
-}
-
-// Load initial data
-onMounted(async () => {
-  try {
-    await loadExpenses()
-  } catch (error) {
-    console.error('Error in onMounted:', error)
-  }
+onMounted(() => {
+  console.log('Component mounted')
 })
 </script>
 
