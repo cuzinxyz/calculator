@@ -1,8 +1,8 @@
 <template>
   <div class="bg-white rounded-lg shadow p-6">
-    <h2 class="text-xl font-bold mb-6 inline-flex items-center gap-2">
-      <ArrowUpIcon class="h-8 w-8 text-green-500" />
-      Dựa trên phân trang chi tiêu
+    <h2 class="text-xl font-bold mb-6 inline-flex items-center gap-1">
+      <BellIcon class="h-8 w-8 text-green-500" />
+      Thanh toán
     </h2>
     
     <div class="space-y-10">
@@ -168,43 +168,46 @@
 import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '~/stores/useUserStore'
 import { storeToRefs } from 'pinia'
-import { ArrowUpIcon } from '@heroicons/vue/24/outline'
+import { BellIcon } from '@heroicons/vue/24/outline'
 
 const userStore = useUserStore()
 const { users } = storeToRefs(userStore)
 const currentQRUrl = ref('')
 const showQRModal = ref(false)
 const savedTransactions = ref([])
-// Thêm ref để track loading state cho từng transaction
 const loadingTransactions = ref(new Set())
+const allExpenses = ref([])
 
+// Thay đổi props, không còn phụ thuộc vào expenses từ parent
 const props = defineProps<{
-  expenses: any[]
+  // Không cần props expenses nữa
 }>()
 
-// Format currency
-const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND'
-  }).format(amount)
+// Thêm method để load tất cả expenses
+const loadAllExpenses = async () => {
+  try {
+    const supabase = useSupabaseClient()
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .order('date', { ascending: false })
+    
+    if (error) throw error
+    allExpenses.value = data || []
+  } catch (error) {
+    console.error('Error loading all expenses:', error)
+  }
 }
 
-// Get payer name
-const getPayerName = (userId: string) => {
-  const user = users.value.find(u => u.id === userId)
-  return user?.name || 'Unknown'
-}
-
-// Calculate personal totals
+// Sửa lại computed personalTotals để dùng allExpenses
 const personalTotals = computed(() => {
-  if (!users.value?.length || !props.expenses?.length) return {}
+  if (!users.value?.length || !allExpenses.value?.length) return {}
   
   const totals = Object.fromEntries(
     users.value.map(user => [user.id, 0])
   )
 
-  props.expenses.forEach(expense => {
+  allExpenses.value.forEach(expense => {
     const totalParticipants = expense.participants.length
     if (totalParticipants === 0) return
 
@@ -372,6 +375,34 @@ onMounted(async () => {
   if (!users.value?.length) {
     await userStore.fetchUsers()
   }
-  await loadSavedTransactions()
+  await Promise.all([
+    loadAllExpenses(),
+    loadSavedTransactions()
+  ])
+})
+
+// Thêm method để refresh data
+const refreshData = async () => {
+  await Promise.all([
+    loadAllExpenses(),
+    loadSavedTransactions()
+  ])
+}
+
+const getPayerName = (payerId: string) => {
+  const payer = users.value.find(u => u.id === payerId)
+  return payer?.name || 'Unknown'
+}
+
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('vi-VN', {
+    style: 'currency',
+    currency: 'VND'
+  }).format(amount)
+}
+
+// Export method để parent component có thể gọi khi cần
+defineExpose({
+  refreshData
 })
 </script>

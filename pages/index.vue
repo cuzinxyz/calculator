@@ -63,7 +63,7 @@
               @page-change="loadExpenses"
             />
             
-            <ExpenseSummary :expenses="expenses" />
+            <ExpenseSummary ref="expenseSummaryRef" />
           </div>
 
           <!-- Content cho người chi tiền -->
@@ -118,6 +118,7 @@ const itemsPerPage = ref(2)
 const loading = ref(false)
 const showUserManagement = ref(false)
 const editingExpense = ref(null)
+const expenseSummaryRef = ref(null)
 
 const { withLoading } = useLoading()
 
@@ -195,8 +196,11 @@ const handleRoleSelect = async (role: 'payer' | 'spender') => {
 }
 
 const handleExpenseSave = async () => {
-  totalExpenses.value = 0
-  await loadExpenses(1)
+  await loadExpenses(currentPage.value)
+  // Refresh ExpenseSummary sau khi có expense mới
+  if (expenseSummaryRef.value) {
+    await expenseSummaryRef.value.refreshData()
+  }
 }
 
 // Xử lý đổi vai trò
