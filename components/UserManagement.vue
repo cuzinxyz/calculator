@@ -1,6 +1,6 @@
 <template>
-  <div class="bg-white rounded-lg shadow p-6 mb-8">
-    <h2 class="text-2xl font-bold mb-4">Quản lý người dùng</h2>
+  <div class="p-4 sm:p-6">
+    <h2 class="text-xl sm:text-2xl font-bold mb-4">Quản lý người dùng</h2>
     
     <!-- Form thêm/sửa user -->
     <form @submit.prevent="handleSubmit" class="mb-6">
@@ -65,8 +65,8 @@
       </div>
     </form>
 
-    <!-- Danh sách users -->
-    <div class="overflow-x-auto">
+    <!-- Table cho desktop -->
+    <div class="hidden sm:block overflow-x-auto">
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
@@ -101,14 +101,51 @@
         </tbody>
       </table>
     </div>
+
+    <!-- Card layout cho mobile -->
+    <div class="sm:hidden space-y-4">
+      <div v-for="user in users" :key="user.id" 
+        class="bg-white rounded-lg border p-4">
+        <div class="flex justify-between items-start mb-3">
+          <div class="font-medium">{{ user.name }}</div>
+          <div class="flex space-x-2">
+            <button
+              @click="editUser(user)"
+              class="text-sm text-indigo-600 hover:text-indigo-900"
+            >
+              Sửa
+            </button>
+            <button
+              @click="deleteUser(user.id)"
+              class="text-sm text-red-600 hover:text-red-900"
+            >
+              Xóa
+            </button>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm">
+          <div class="grid grid-cols-2">
+            <div class="text-gray-500">Số tài khoản:</div>
+            <div>{{ user.account_number }}</div>
+          </div>
+          <div class="grid grid-cols-2">
+            <div class="text-gray-500">Ngân hàng:</div>
+            <div>{{ user.bank + ' - ' + getBankName(user.bank) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useBanks } from '~/composables/useBanks'
+import { useUserStore } from '~/stores/useUserStore'
+import { storeToRefs } from 'pinia'
 
-const users = ref([])
+const userStore = useUserStore()
+const { users } = storeToRefs(userStore) // Sử dụng storeToRefs để giữ reactivity
 const editingUserId = ref(null)
 const userForm = ref({
   name: '',
@@ -124,28 +161,12 @@ const getBankName = (code: string) => {
   return bank ? bank.name : code
 }
 
-// Load users
-const loadUsers = async () => {
-  const { data, error } = await useSupabaseClient()
-    .from('users')
-    .select('*')
-    .order('created_at', { ascending: false })
-  
-  if (error) {
-    console.error('Error loading users:', error)
-    return
-  }
-  
-  users.value = data
-}
-
-// Add/Update user
+// Handle form submission
 const handleSubmit = async () => {
   try {
     const supabase = useSupabaseClient()
     
     if (editingUserId.value) {
-      // Update
       const { error } = await supabase
         .from('users')
         .update(userForm.value)
@@ -153,7 +174,6 @@ const handleSubmit = async () => {
       
       if (error) throw error
     } else {
-      // Add
       const { error } = await supabase
         .from('users')
         .insert([userForm.value])
@@ -161,7 +181,7 @@ const handleSubmit = async () => {
       if (error) throw error
     }
     
-    await loadUsers()
+    await userStore.refreshUsers()
     resetForm()
   } catch (error) {
     console.error('Error saving user:', error)
@@ -186,7 +206,7 @@ const deleteUser = async (id) => {
     
     if (error) throw error
     
-    await loadUsers()
+    await userStore.refreshUsers()
   } catch (error) {
     console.error('Error deleting user:', error)
   }
@@ -203,10 +223,7 @@ const resetForm = () => {
 }
 
 // Load initial data
-onMounted(async () => {
-  await Promise.all([
-    loadUsers(),
-    fetchBanks()
-  ])
+onMounted(() => {
+  fetchBanks()
 })
 </script>

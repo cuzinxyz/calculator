@@ -54,7 +54,7 @@ CREATE TABLE expenses (
   title TEXT NOT NULL,
   amount DECIMAL NOT NULL,
   date DATE DEFAULT CURRENT_DATE,
-  payer TEXT NOT NULL,
+  payer UUID NOT NULL, -- Thay đổi từ TEXT sang UUID để match với users.id
   participants TEXT[] NOT NULL,
   split_equally BOOLEAN DEFAULT true,
   individual_amounts JSONB,
