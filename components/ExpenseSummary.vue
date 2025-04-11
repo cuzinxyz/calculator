@@ -282,19 +282,30 @@ const mergedTransactions = computed(() => {
   return result
 })
 
-const showQR = (transaction: any) => {
-  currentQRUrl.value = generateQRUrl(transaction)
-  showQRModal.value = true
-}
+const showQR = async (transaction: any) => {
+  if (!transaction) {
+    console.error('Transaction is undefined')
+    return
+  }
 
-const generateQRUrl = (transaction: any) => {
-  const toUser = users.value.find(u => u.id === transaction.to)
-  const fromUser = users.value.find(u => u.id === transaction.from)
-  if (!toUser || !fromUser) return ''
+  try {
+    const toUser = await users.value.find(u => u.id === transaction.to)
+    const fromUser = await users.value.find(u => u.id === transaction.from)
+    
+    if (!toUser || !fromUser) {
+      console.error('Could not find users for transaction')
+      return
+    }
 
-  const description = `${fromUser.name} ck ${toUser.name} tien ${props.expenses.map(e => e.title).join(' ')}`
-  
-  return `https://qr.sepay.vn/img?acc=${toUser.account_number}&bank=${toUser.bank}&amount=${transaction.amount}&des=${encodeURIComponent(description)}&template=compact&download=false`
+    const description = `${fromUser.name} ck ${toUser.name}`
+    const url = `https://qr.sepay.vn/img?acc=${toUser.account_number}&bank=${toUser.bank}&amount=${transaction.amount}&des=${encodeURIComponent(description)}&template=compact&download=false`
+    
+    currentQRUrl.value = url
+    showQRModal.value = true
+    
+  } catch (error) {
+    console.error('Error in showQR:', error)
+  }
 }
 
 const toggleTransactionStatus = async (transaction) => {
