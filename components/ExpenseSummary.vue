@@ -1,6 +1,9 @@
 <template>
   <div class="bg-white rounded-lg shadow p-6">
-    <h2 class="text-xl font-bold mb-6">Kết quả chia tiền</h2>
+    <h2 class="text-xl font-bold mb-6 inline-flex items-center gap-2">
+      <ArrowUpIcon class="h-8 w-8 text-green-500" />
+      Dựa trên phân trang chi tiêu
+    </h2>
     
     <div class="space-y-10">
       <!-- Tổng kết cá nhân -->
@@ -128,20 +131,34 @@
         <div class="p-4">
           <img :src="currentQRUrl" alt="QR Code" class="w-full">
         </div>
-        <div class="p-4 border-t grid grid-cols-2 gap-3">
-          <button
-            @click="downloadQr"
-            class="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700"
-          >
-            Tải xuống
-          </button>
+        <div class="p-6 border-t bg-gray-50">
+          <div class="flex flex-col sm:flex-row gap-3">
+            <button
+              @click="downloadQr"
+              class="flex-1 bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 px-4 rounded-xl 
+                     hover:from-green-600 hover:to-green-700 transform hover:scale-[1.02] 
+                     transition-all duration-200 shadow-sm hover:shadow
+                     flex items-center justify-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+              </svg>
+              Tải xuống QR
+            </button>
 
-          <button
-            @click="showQRModal = false"
-            class="w-full bg-gray-600 text-white py-2 rounded-lg hover:bg-gray-700"
-          >
-            Đóng
-          </button>
+            <button
+              @click="showQRModal = false"
+              class="flex-1 bg-white text-gray-700 py-2.5 px-4 rounded-xl border border-gray-200
+                     hover:bg-gray-50 transform hover:scale-[1.02] 
+                     transition-all duration-200 shadow-sm hover:shadow
+                     flex items-center justify-center gap-2"
+            >
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+              </svg>
+              Đóng
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -151,6 +168,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useUserStore } from '~/stores/useUserStore'
 import { storeToRefs } from 'pinia'
+import { ArrowUpIcon } from '@heroicons/vue/24/outline'
 
 const userStore = useUserStore()
 const { users } = storeToRefs(userStore)

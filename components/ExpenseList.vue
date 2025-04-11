@@ -2,8 +2,8 @@
   <div class="bg-white rounded-lg shadow p-6">
     <h2 class="text-xl font-bold mb-6">Danh sách chi tiêu</h2>
 
-    <!-- Loading skeleton -->
-    <div v-if="loading" class="space-y-4">
+    <!-- Loading skeleton chỉ cho lần đầu load -->
+    <div v-if="loading && !expenses.length" class="space-y-4">
       <div v-for="i in itemsPerPage" :key="i" 
         class="animate-pulse bg-gray-100 h-16 rounded-lg">
       </div>
@@ -14,23 +14,36 @@
       Không có chi tiêu nào
     </div>
 
-    <!-- Expense list -->
-    <div v-else class="space-y-4">
-      <div v-for="expense in expenses" :key="expense.id" 
-        class="bg-white rounded-lg border p-4">
-        <div class="font-medium mb-2">{{ expense.title }}</div>
-        <div class="space-y-2 text-sm">
-          <div class="grid grid-cols-2">
-            <div class="text-gray-500">Ngày:</div>
-            <div>{{ formatDate(expense.date) }}</div>
-          </div>
-          <div class="grid grid-cols-2">
-            <div class="text-gray-500">Số tiền:</div>
-            <div>{{ formatCurrency(expense.amount) }}</div>
-          </div>
-          <div class="grid grid-cols-2">
-            <div class="text-gray-500">Người trả:</div>
-            <div>{{ getPayerName(expense.payer) }}</div>
+    <!-- Expense list with overlay loading for pagination -->
+    <div v-else class="relative">
+      <!-- Overlay loading indicator for pagination -->
+      <div v-if="loading && expenses.length" 
+        class="absolute inset-0 bg-white/50 flex items-center justify-center rounded-lg z-10">
+        <div class="flex items-center space-x-2">
+          <div class="w-2 h-2 bg-green-600 rounded-full animate-bounce" style="animation-delay: 0s"></div>
+          <div class="w-2 h-2 bg-green-600 rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+          <div class="w-2 h-2 bg-green-600 rounded-full animate-bounce" style="animation-delay: 0.4s"></div>
+        </div>
+      </div>
+
+      <!-- Expense list content -->
+      <div class="space-y-4">
+        <div v-for="expense in expenses" :key="expense.id" 
+          class="bg-white rounded-lg border p-4">
+          <div class="font-medium mb-2">{{ expense.title }}</div>
+          <div class="space-y-2 text-sm">
+            <div class="grid grid-cols-2">
+              <div class="text-gray-500">Ngày:</div>
+              <div>{{ formatDate(expense.date) }}</div>
+            </div>
+            <div class="grid grid-cols-2">
+              <div class="text-gray-500">Số tiền:</div>
+              <div>{{ formatCurrency(expense.amount) }}</div>
+            </div>
+            <div class="grid grid-cols-2">
+              <div class="text-gray-500">Người trả:</div>
+              <div>{{ getPayerName(expense.payer) }}</div>
+            </div>
           </div>
         </div>
       </div>

@@ -328,10 +328,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { 
+  UserCircleIcon,
+  UserIcon, 
+  UsersIcon,
+  MagnifyingGlassIcon,
+  ArrowPathIcon,
+  CheckIcon,
+  XMarkIcon
+} from '@heroicons/vue/24/outline'
+import { computed, onMounted, ref, watch, nextTick } from 'vue'
 import { useUserStore } from '~/stores/useUserStore'
 import { storeToRefs } from 'pinia'
-import { UserIcon, UserCircleIcon, XMarkIcon } from '@heroicons/vue/24/outline'
 
 const userStore = useUserStore()
 const { users } = storeToRefs(userStore)

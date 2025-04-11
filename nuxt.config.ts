@@ -26,6 +26,21 @@ export default defineNuxtConfig({
     baseURL: '/calculator/'
   },
 
+  // Thêm cấu hình typescript
+  typescript: {
+    strict: true,
+    shim: false
+  },
+
+  // Thêm cấu hình vite
+  vite: {
+    server: {
+      fs: {
+        strict: false
+      }
+    }
+  },
+
   compatibilityDate: '2025-04-10',
 
   ssr: false,

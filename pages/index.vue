@@ -25,58 +25,67 @@
         </div>
       </div>
 
-      <div v-else>
-        <!-- Header với nút đổi role và quản lý user -->
-        <div class="flex justify-between items-center mb-6">
-          <button 
-            type="button"
-            @click="changeRole"
-            class="text-green-600 hover:text-green-700"
-          >
-            ← Đổi vai trò
-          </button>
-          <button 
-            type="button"
-            @click="handleShowUserManagement"
-            class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
-          >
-            Quản lý người dùng
-          </button>
-        </div>
+      <Transition
+        enter-active-class="transition-opacity duration-300 ease-out"
+        enter-from-class="opacity-0"
+        enter-to-class="opacity-100"
+        leave-active-class="transition-opacity duration-300 ease-in"
+        leave-from-class="opacity-100"
+        leave-to-class="opacity-0"
+      >
+        <div v-if="selectedRole">
+          <!-- Header với nút đổi role và quản lý user -->
+          <div class="flex justify-between items-center mb-6">
+            <button 
+              type="button"
+              @click="changeRole"
+              class="text-green-600 hover:text-green-700"
+            >
+              ← Đổi vai trò
+            </button>
+            <button 
+              type="button"
+              @click="handleShowUserManagement"
+              class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
+            >
+              Quản lý người dùng
+            </button>
+          </div>
 
-        <!-- Content cho người trả tiền -->
-        <div v-if="selectedRole === 'payer'" class="max-w-5xl mx-auto space-y-8">
-          <ExpenseList
-            :expenses="expenses"
-            :current-page="currentPage"
-            :total-items="totalExpenses"
-            :items-per-page="itemsPerPage"
-            :loading="loading"
-            @page-change="loadExpenses"
-          />
-          
-          <ExpenseSummary :expenses="expenses" />
-        </div>
+          <!-- Content cho người trả tiền -->
+          <div v-if="selectedRole === 'payer'" class="max-w-5xl mx-auto space-y-8">
+            <ExpenseList
+              :expenses="expenses"
+              :current-page="currentPage"
+              :total-items="totalExpenses"
+              :items-per-page="itemsPerPage"
+              :loading="loading"
+              @page-change="loadExpenses"
+            />
+            
+            <ExpenseSummary :expenses="expenses" />
+          </div>
 
-        <!-- Content cho người chi tiền -->
-        <div v-if="selectedRole === 'spender'" class="max-w-5xl mx-auto space-y-8">
-          <ExpenseForm 
-            :expenses="expenses"
-            @save="handleExpenseSave" 
-          />
-          
-          <ExpenseList
-            :expenses="expenses"
-            :current-page="currentPage"
-            :total-items="totalExpenses"
-            :items-per-page="itemsPerPage"
-            :loading="loading"
-            @page-change="loadExpenses"
-          />
-          
-          <!-- <ExpenseSummary :expenses="expenses" /> -->
+          <!-- Content cho người chi tiền -->
+          <div v-if="selectedRole === 'spender'" class="max-w-5xl mx-auto space-y-8">
+            <ExpenseForm 
+              :expenses="expenses"
+              @save="handleExpenseSave" 
+            />
+            
+            <ExpenseList
+              :expenses="expenses"
+              :current-page="currentPage"
+              :total-items="totalExpenses"
+              :items-per-page="itemsPerPage"
+              :loading="loading"
+              @page-change="loadExpenses"
+            />
+            
+            <!-- <ExpenseSummary :expenses="expenses" /> -->
+          </div>
         </div>
-      </div>
+      </Transition>
 
       <!-- User Management Modal -->
       <Modal v-if="showUserManagement" @close="closeUserManagement">
@@ -96,6 +105,7 @@
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '~/stores/useUserStore'
 import { storeToRefs } from 'pinia'
+import { useLoading } from '~/composables/useLoading'
 
 const userStore = useUserStore()
 const { users } = storeToRefs(userStore)
@@ -107,15 +117,13 @@ const currentPage = ref(1)
 const itemsPerPage = ref(2)
 const loading = ref(false)
 const showUserManagement = ref(false)
+const editingExpense = ref(null)
+
+const { withLoading } = useLoading()
 
 const loadExpenses = async (page = 1) => {
+  // Không sử dụng withLoading ở đây nữa
   console.log('loadExpenses called with page:', page)
-  
-  // Bỏ check duplicate vì đang cần load data lần đầu
-  // if (loading.value || page === currentPage.value) {
-  //   console.log('Skipping duplicate request')
-  //   return
-  // }
   
   try {
     loading.value = true
@@ -153,28 +161,13 @@ const loadExpenses = async (page = 1) => {
       dataPromise
     ])
     
-    console.log('Count response:', countResponse)
-    console.log('Data response:', dataResponse)
+    if (countResponse.error) throw countResponse.error
+    if (dataResponse.error) throw dataResponse.error
 
-    if (countResponse.error) {
-      console.error('Count error:', countResponse.error)
-      throw countResponse.error
-    }
-    if (dataResponse.error) {
-      console.error('Data error:', dataResponse.error)
-      throw dataResponse.error
-    }
-
-    // Cập nhật state
     totalExpenses.value = countResponse.count || 0
     expenses.value = dataResponse.data || []
     currentPage.value = page
     
-    console.log('Updated state:', {
-      totalExpenses: totalExpenses.value,
-      expenses: expenses.value.length,
-      currentPage: currentPage.value
-    })
   } catch (error) {
     console.error('Error loading expenses:', error)
   } finally {
@@ -184,17 +177,21 @@ const loadExpenses = async (page = 1) => {
 }
 
 const handleRoleSelect = async (role: 'payer' | 'spender') => {
-  console.log('Role selected:', role)
-  try {
-    selectedRole.value = role
-    if (!users.value.length) {
-      await userStore.fetchUsers()
+  await withLoading(async () => {
+    console.log('Role selected:', role)
+    try {
+      if (!users.value.length) {
+        await userStore.fetchUsers()
+      }
+      // Đợi một chút trước khi set role để loading screen có thời gian hiển thị
+      await new Promise(resolve => setTimeout(resolve, 100))
+      selectedRole.value = role
+      // Force load expenses
+      await loadExpenses(1)
+    } catch (error) {
+      console.error('Error in handleRoleSelect:', error)
     }
-    // Force load expenses
-    await loadExpenses(1)
-  } catch (error) {
-    console.error('Error in handleRoleSelect:', error)
-  }
+  })
 }
 
 const handleExpenseSave = async () => {
@@ -206,7 +203,9 @@ const handleExpenseSave = async () => {
 const changeRole = () => {
   try {
     selectedRole.value = null
-    editingExpense.value = null
+    if (editingExpense.value) {
+      editingExpense.value = null
+    }
     showUserManagement.value = false
   } catch (error) {
     console.error('Error in changeRole:', error)
