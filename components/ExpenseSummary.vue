@@ -2,13 +2,13 @@
   <div class="bg-white rounded-lg shadow p-6">
     <h2 class="text-xl font-bold mb-6 inline-flex items-center gap-1">
       <BellIcon class="h-8 w-8 text-green-500" />
-      Thanh toán
+      Tổng kết và thanh toán
     </h2>
     
     <div class="space-y-10">
-      <!-- Tổng kết cá nhân -->
+      <!-- Tổng kết số tiền -->
       <div>
-        <h3 class="text-md font-semibold mb-2">Tổng kết cá nhân</h3>
+        <h3 class="text-md font-semibold mb-2">Số tiền cần thanh toán</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           <div v-for="(amount, user) in personalTotals" :key="user" 
             class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
@@ -17,15 +17,18 @@
               'font-medium',
               amount < 0 ? 'text-red-500' : 'text-green-500'
             ]">
+              <span class="text-xs text-gray-400">
+                {{ amount < 0 ? '(cần trả)' : '(được nhận)' }}
+              </span>
               {{ formatCurrency(amount) }}
             </span>
           </div>
         </div>
       </div>
 
-      <!-- Giao dịch cần thực hiện -->
+      <!-- Danh sách thanh toán -->
       <div>
-        <h3 class="text-md font-semibold mb-2">Giao dịch cần thực hiện</h3>
+        <h3 class="text-md font-semibold mb-2">Các khoản cần thanh toán</h3>
         <div class="space-y-4">
           <div 
             v-for="transaction in mergedTransactions" 
@@ -60,7 +63,7 @@
                         : 'bg-green-100 text-green-700'
                   ]"
                 >
-                  {{ transaction.completed ? 'Đã chuyển' : 'Đánh dấu đã chuyển' }}
+                  {{ transaction.completed ? 'Đã hoàn thành' : 'Xác nhận đã chuyển khoản' }}
                   <span v-if="loadingTransactions.has(transaction.id || `${transaction.from}-${transaction.to}`)">
                     ...
                   </span>
@@ -69,7 +72,7 @@
                   @click="showQR(transaction)"
                   class="w-full py-2 px-3 rounded-md text-sm font-medium bg-green-50 text-green-600"
                 >
-                  Tạo QR chuyển tiền
+                  Tạo mã QR chuyển khoản
                 </button>
               </div>
             </div>
@@ -95,7 +98,7 @@
                         : 'bg-green-100 text-green-700'
                   ]"
                 >
-                  {{ transaction.completed ? 'Đã chuyển' : 'Đánh dấu đã chuyển' }}
+                  {{ transaction.completed ? 'Đã hoàn thành' : 'Xác nhận đã chuyển khoản' }}
                   <span v-if="loadingTransactions.has(transaction.id || `${transaction.from}-${transaction.to}`)">
                     ...
                   </span>
@@ -104,7 +107,7 @@
                   @click="showQR(transaction)"
                   class="px-3 py-1 rounded-md text-sm bg-green-50 text-green-600"
                 >
-                  Tạo QR chuyển tiền
+                  Tạo mã QR chuyển khoản
                 </button>
               </div>
             </div>
@@ -113,7 +116,7 @@
               v-if="transaction.completed" 
               class="text-sm text-gray-500 mt-2"
             >
-              Hoàn thành: {{ formatDateTime(transaction.completed_at) }}
+              Đã hoàn thành lúc: {{ formatDateTime(transaction.completed_at) }}
             </div>
           </div>
         </div>
@@ -126,10 +129,10 @@
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 !m-0">
       <div class="bg-white rounded-lg shadow-xl w-full max-w-sm">
         <div class="p-4 border-b">
-          <h3 class="text-lg font-bold">QR Code chuyển khoản</h3>
+          <h3 class="text-lg font-bold">Mã QR chuyển khoản</h3>
         </div>
         <div class="p-4">
-          <img :src="currentQRUrl" alt="QR Code" class="w-full">
+          <img :src="currentQRUrl" alt="Mã QR chuyển khoản" class="w-full">
         </div>
         <div class="p-6 border-t bg-gray-50">
           <div class="flex flex-col sm:flex-row gap-3">

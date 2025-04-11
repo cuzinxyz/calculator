@@ -7,35 +7,35 @@
     ]"
   >
     <div class="flex justify-between items-center mb-4">
-      <h2 class="text-2xl font-bold">{{ editingExpenseId ? 'Sửa chi tiêu' : 'Thêm chi tiêu mới' }}</h2>
-      <!-- Thêm badge khi đang sửa -->
+      <h2 class="text-2xl font-bold">{{ editingExpenseId ? 'Chỉnh sửa khoản chi' : 'Thêm khoản chi mới' }}</h2>
       <span 
         v-if="editingExpenseId" 
         class="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full"
       >
-        Đang sửa
+        Đang chỉnh sửa
       </span>
     </div>
     <form @submit.prevent="handleSubmit">
       <div class="space-y-6">
         <div class="form-control-group">
-          <label class="block text-sm font-medium text-gray-700 mb-3">Tên chi tiêu</label>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Bạn đã chi tiêu gì?</label>
           <input
             v-model="expense.title"
             type="text"
             required
+            placeholder="VD: Ăn trưa, Cafe, Mua sắm..."
             class="form-input"
           />
         </div>
 
         <div class="form-control-group">
-          <label class="block text-sm font-medium text-gray-700 mb-3">Số tiền</label>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Bạn đã chi bao nhiêu?</label>
           <div class="relative">
             <input
               v-model="rawAmount"
               type="text"
               required
-              placeholder="Nhập số tiền"
+              placeholder="VD: 50000, 100000, 1000000..."
               class="form-input"
             />
             <div class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">
@@ -124,7 +124,7 @@
         </div>
 
         <div class="form-control-group relative">
-          <label class="block text-sm font-medium text-gray-700 mb-3">Người trả</label>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Ai là người thanh toán?</label>
           
           <!-- Search input -->
           <div class="relative">
@@ -133,7 +133,7 @@
               v-model="payerSearch"
               @focus="showPayerDropdown = true"
               @input="handlePayerSearch"
-              :placeholder="selectedPayerName || 'Tìm người trả...'"
+              :placeholder="selectedPayerName || 'Tìm tên người thanh toán...'"
               class="form-input"
             />
             <span class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -217,7 +217,7 @@
         <div class="space-y-4">
           <!-- Người tham gia -->
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-3">Người tham gia</label>
+            <label class="block text-sm font-medium text-gray-700 mb-3">Những ai tham gia chi tiêu này?</label>
             
             <!-- Quick actions -->
             <div class="flex gap-2 mb-3">
@@ -226,7 +226,7 @@
                 @click="selectAllParticipants"
                 class="px-3 py-1 text-sm rounded-full bg-gray-100 hover:bg-gray-200"
               >
-                Chọn tất cả
+                Chọn tất cả mọi người
               </button>
               <button
                 v-if="currentUser"
@@ -237,7 +237,7 @@
                   isCurrentUserSelected ? 'bg-green-100 text-green-700' : 'bg-gray-100 hover:bg-gray-200'
                 ]"
               >
-                Tôi tham gia
+                Tôi có tham gia
               </button>
             </div>
 
@@ -280,7 +280,7 @@
                   value="equal"
                   class="h-4 w-4 text-green-600"
                 />
-                <span class="ml-2 text-sm">Chia đều cho tất cả</span>
+                <span class="ml-2 text-sm">Chia đều cho tất cả mọi người</span>
               </label>
 
               <label class="flex items-center">
@@ -290,7 +290,7 @@
                   value="payerFree"
                   class="h-4 w-4 text-green-600"
                 />
-                <span class="ml-2 text-sm">Người trả không phải trả</span>
+                <span class="ml-2 text-sm">Người thanh toán không phải trả tiền</span>
               </label>
 
               <!-- Hiển thị kết quả chia tiền -->

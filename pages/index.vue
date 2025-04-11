@@ -48,7 +48,7 @@
               @click="handleShowUserManagement"
               class="px-4 py-2 bg-green-100 text-green-700 rounded-lg hover:bg-green-200"
             >
-              Quản lý người dùng
+              Quản lý danh sách người tham gia
             </button>
           </div>
 

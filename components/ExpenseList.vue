@@ -1,6 +1,6 @@
 <template>
-  <div class="bg-white rounded-lg shadow p-6">
-    <h2 class="text-xl font-bold mb-6">Danh sách chi tiêu</h2>
+  <div class="bg-white rounded-lg shadow px-4 py-8">
+    <h2 class="text-xl font-bold mb-6">Lịch sử chi tiêu</h2>
 
     <!-- Loading skeleton chỉ cho lần đầu load -->
     <div v-if="loading && !expenses.length" class="space-y-4">
@@ -11,7 +11,7 @@
 
     <!-- Empty state -->
     <div v-else-if="!expenses.length" class="text-center py-8 text-gray-500">
-      Không có chi tiêu nào
+      Chưa có khoản chi tiêu nào được ghi nhận
     </div>
 
     <!-- Expense list with overlay loading for pagination -->
@@ -33,15 +33,15 @@
           <div class="font-medium mb-2">{{ expense.title }}</div>
           <div class="space-y-2 text-sm">
             <div class="grid grid-cols-2">
-              <div class="text-gray-500">Ngày:</div>
+              <div class="text-gray-500">Thời gian:</div>
               <div>{{ formatDate(expense.date) }}</div>
             </div>
             <div class="grid grid-cols-2">
-              <div class="text-gray-500">Số tiền:</div>
+              <div class="text-gray-500">Tổng tiền:</div>
               <div>{{ formatCurrency(expense.amount) }}</div>
             </div>
             <div class="grid grid-cols-2">
-              <div class="text-gray-500">Người trả:</div>
+              <div class="text-gray-500">Người đã thanh toán:</div>
               <div>{{ getPayerName(expense.payer) }}</div>
             </div>
           </div>
@@ -61,7 +61,7 @@
             : 'bg-green-100 text-green-700 hover:bg-green-200'
         ]"
       >
-        Trước
+        Trang trước
       </button>
       <button 
         @click="nextPage"
@@ -73,7 +73,7 @@
             : 'bg-green-100 text-green-700 hover:bg-green-200'
         ]"
       >
-        Sau
+        Trang sau
       </button>
     </div>
   </div>

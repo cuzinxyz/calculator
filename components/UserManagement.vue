@@ -1,22 +1,23 @@
 <template>
   <div class="p-4 sm:p-6">
-    <!-- Form thêm/sửa user -->
+    <!-- Form thêm/sửa thông tin người nhận tiền -->
     <form @submit.prevent="handleSubmit" class="mb-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Tên và Số tài khoản trên cùng một hàng khi >= md -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-3">Tên</label>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Tên người nhận</label>
           <input
             v-model="userForm.name"
             required
+            placeholder="Nhập tên người nhận tiền"
             class="form-input"
           />
         </div>
         
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-3">Số tài khoản</label>
+          <label class="block text-sm font-medium text-gray-700 mb-3">Số tài khoản ngân hàng</label>
           <input
             v-model="userForm.account_number"
+            placeholder="Nhập số tài khoản ngân hàng"
             class="form-input"
           />
         </div>
@@ -24,13 +25,13 @@
 
       <!-- Ngân hàng chiếm full width -->
       <div class="mt-4">
-        <label class="block text-sm font-medium text-gray-700 mb-3">Ngân hàng</label>
+        <label class="block text-sm font-medium text-gray-700 mb-3">Chọn ngân hàng</label>
         <div class="relative">
           <input
             type="text"
             v-model="bankSearch"
             @focus="showBankDropdown = true"
-            :placeholder="selectedBankName || 'Tìm ngân hàng...'"
+            :placeholder="selectedBankName || 'Tìm tên hoặc mã ngân hàng...'"
             class="form-input pl-10 pr-10 w-full"
           />
           
@@ -91,13 +92,13 @@
           @click="resetForm"
           class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
         >
-          Reset
+          Xóa thông tin
         </button>
         <button
           type="submit"
           class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
         >
-          {{ editingUserId ? 'Cập nhật' : 'Thêm' }}
+          {{ editingUserId ? 'Lưu thông tin' : 'Thêm người nhận' }}
         </button>
       </div>
     </form>
@@ -107,7 +108,7 @@
       <table class="min-w-full divide-y divide-gray-200">
         <thead class="bg-gray-50">
           <tr>
-            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên</th>
+            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên người nhận</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số tài khoản</th>
             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngân hàng</th>
             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
@@ -125,7 +126,7 @@
                 @click="editUser(user)"
                 class="text-indigo-600 hover:text-indigo-900 mr-3"
               >
-                Sửa
+                Chỉnh sửa
               </button>
               <button
                 @click="deleteUser(user.id)"
@@ -150,7 +151,7 @@
               @click="editUser(user)"
               class="text-sm text-indigo-600 hover:text-indigo-900"
             >
-              Sửa
+              Chỉnh sửa
             </button>
             <button
               @click="deleteUser(user.id)"
