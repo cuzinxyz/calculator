@@ -23,3 +23,6 @@ logs
 
 # VSCode generated files
 .vscode
+
+# JetBrains generated files
+.idea

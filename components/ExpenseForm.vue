@@ -330,14 +330,10 @@
 <script setup lang="ts">
 import { 
   UserCircleIcon,
-  UserIcon, 
-  UsersIcon,
-  MagnifyingGlassIcon,
-  ArrowPathIcon,
-  CheckIcon,
+  UserIcon,
   XMarkIcon
 } from '@heroicons/vue/24/outline'
-import { computed, onMounted, ref, watch, nextTick } from 'vue'
+import { computed, onMounted, ref, watch, nextTick, reactive } from 'vue'
 import { useUserStore } from '~/stores/useUserStore'
 import { storeToRefs } from 'pinia'
 
@@ -367,15 +363,6 @@ const expense = reactive({
 const today = computed(() => {
   return new Date().toISOString().split('T')[0]
 })
-
-const toggleParticipant = (name: string) => {
-  const index = expense.participants.indexOf(name)
-  if (index === -1) {
-    expense.participants.push(name)
-  } else {
-    expense.participants.splice(index, 1)
-  }
-}
 
 const validateTotalAmount = () => {
   if (!expense.splitEqually) {
@@ -512,30 +499,12 @@ const smartSuggestions = computed(() => {
   return [...new Set(suggestions)].slice(0, 3) // Remove duplicates and limit to 3 suggestions
 })
 
-// Format currency without currency symbol for input
-const formatNumber = (num: number) => {
-  return new Intl.NumberFormat('vi-VN').format(num)
-}
-
 // Format currency with currency symbol for display
 const formatCurrency = (num: number) => {
   return new Intl.NumberFormat('vi-VN', {
     style: 'currency',
     currency: 'VND'
   }).format(num)
-}
-
-// Handle amount input
-const handleAmountInput = (event: Event) => {
-  const input = (event.target as HTMLInputElement).value
-  // Remove all non-numeric characters
-  const numericValue = input.replace(/[^0-9]/g, '')
-  
-  if (numericValue) {
-    expense.amount = parseInt(numericValue)
-  } else {
-    expense.amount = 0
-  }
 }
 
 // Handle quick amount selection
@@ -693,58 +662,9 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
 })
 
-const participantSearch = ref('')
-
-// Computed: Grouped and filtered participants
-const groupedParticipants = computed(() => {
-  const search = participantSearch.value.toLowerCase()
-  const filtered = users.value.filter(user => 
-    user.name.toLowerCase().includes(search) ||
-    user.email?.toLowerCase().includes(search)
-  )
-
-  // Group by frequency and filter by search
-  const frequent = filtered.filter(user => isFrequentParticipant(user.id))
-  const others = filtered.filter(user => !isFrequentParticipant(user.id))
-
-  const groups = []
-  
-  if (frequent.length) {
-    groups.push({
-      label: 'Thường xuyên tham gia',
-      users: frequent
-    })
-  }
-
-  if (others.length) {
-    groups.push({
-      label: 'Những người khác',
-      users: others
-    })
-  }
-
-  return groups
-})
-
-// Check if user is frequent participant
-const isFrequentParticipant = (userId: string) => {
-  if (!props.expenses) return false
-  
-  const participationCount = props.expenses.filter(exp => 
-    exp.participants.includes(users.value.find(u => u.id === userId)?.name)
-  ).length
-
-  return participationCount >= 3 // Consider frequent if participated in 3 or more expenses
-}
-
 // Quick actions
 const selectAllParticipants = () => {
   expense.participants = users.value.map(u => u.name)
-}
-
-const selectFrequentGroup = () => {
-  const frequentUsers = users.value.filter(user => isFrequentParticipant(user.id))
-  expense.participants = frequentUsers.map(u => u.name)
 }
 
 const isCurrentUserSelected = computed(() => {
@@ -800,141 +720,6 @@ watch(() => expense.participants, (newParticipants) => {
     expense.individualAmounts = amounts
   }
 }, { deep: true })
-
-// Computed properties
-const amountPerPerson = computed(() => {
-  if (!expense.amount || !expense.participants.length) return 0
-  return Math.round(expense.amount / expense.participants.length)
-})
-
-const totalAllocated = computed(() => {
-  if (!expense.individualAmounts) return 0
-  return Object.values(expense.individualAmounts)
-    .reduce((sum, amount) => sum + (Number(amount) || 0), 0)
-})
-
-const remainingAmount = computed(() => {
-  return expense.amount - totalAllocated.value
-})
-
-// Quick adjustments for equal split
-const quickAdjustments = computed(() => [
-  { label: 'Làm tròn xuống', value: 'roundDown' },
-  { label: 'Làm tròn lên', value: 'roundUp' },
-  { label: 'Làm tròn đến 1k', value: 'roundToThousand' },
-  { label: 'Làm tròn đến 10k', value: 'roundToTenThousand' },
-])
-
-// Quick options for custom split
-const quickSplitOptions = computed(() => [
-  { label: 'Chia theo tỷ lệ', value: 'proportional' },
-  { label: 'Người trả không phải trả', value: 'payerFree' },
-  { label: 'Reset về 0', value: 'reset' },
-  { label: 'Chia đều phần còn lại', value: 'splitRemaining' },
-])
-
-// Methods
-const toggleSplitEqually = () => {
-  expense.splitEqually = !expense.splitEqually
-  if (expense.splitEqually) {
-    const amount = amountPerPerson.value
-    expense.participants.forEach(participant => {
-      expense.individualAmounts[participant] = amount
-    })
-  }
-}
-
-const adjustAmount = (type: string) => {
-  if (!expense.amount || !expense.participants.length) return
-  
-  let newAmount = amountPerPerson.value
-  switch (type) {
-    case 'roundDown':
-      newAmount = Math.floor(newAmount)
-      break
-    case 'roundUp':
-      newAmount = Math.ceil(newAmount)
-      break
-    case 'roundToThousand':
-      newAmount = Math.round(newAmount / 1000) * 1000
-      break
-    case 'roundToTenThousand':
-      newAmount = Math.round(newAmount / 10000) * 10000
-      break
-  }
-  
-  expense.participants.forEach(participant => {
-    expense.individualAmounts[participant] = newAmount
-  })
-}
-
-const applySplitOption = (type: string) => {
-  switch (type) {
-    case 'proportional':
-      // Chia theo tỷ lệ dựa trên số tiền hiện tại
-      const total = totalAllocated.value || expense.amount
-      expense.participants.forEach(participant => {
-        const current = expense.individualAmounts[participant] || 0
-        expense.individualAmounts[participant] = Math.round(
-          (current / total) * expense.amount
-        )
-      })
-      break
-    
-    case 'payerFree':
-      // Người trả không phải trả
-      const perPerson = expense.amount / (expense.participants.length - 1)
-      expense.participants.forEach(participant => {
-        expense.individualAmounts[participant] = participant === selectedPayerName.value
-          ? 0
-          : Math.round(perPerson)
-      })
-      break
-    
-    case 'reset':
-      // Reset tất cả về 0
-      expense.participants.forEach(participant => {
-        expense.individualAmounts[participant] = 0
-      })
-      break
-    
-    case 'splitRemaining':
-      // Chia đều phần còn lại
-      const remaining = remainingAmount.value
-      const split = remaining / expense.participants.length
-      expense.participants.forEach(participant => {
-        expense.individualAmounts[participant] = (
-          expense.individualAmounts[participant] || 0
-        ) + Math.round(split)
-      })
-      break
-  }
-}
-
-const validateIndividualAmount = (participant: string) => {
-  const amount = expense.individualAmounts[participant]
-  if (amount < 0) {
-    expense.individualAmounts[participant] = 0
-  }
-}
-
-const hasError = (participant: string) => {
-  const amount = expense.individualAmounts[participant]
-  return amount < 0 || amount > expense.amount
-}
-
-const getErrorMessage = (participant: string) => {
-  const amount = expense.individualAmounts[participant]
-  if (amount < 0) return 'Số tiền không thể âm'
-  if (amount > expense.amount) return 'Số tiền không thể lớn hơn tổng'
-  return ''
-}
-
-const calculatePercentage = (participant: string) => {
-  const amount = expense.individualAmounts[participant] || 0
-  if (!expense.amount) return 0
-  return Math.round((amount / expense.amount) * 100)
-}
 
 // Watch for amount changes
 watch(() => expense.amount, (newAmount) => {

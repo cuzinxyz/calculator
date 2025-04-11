@@ -283,14 +283,6 @@ const resetForm = () => {
   }
 }
 
-// Handle bank focus
-const handleBankFocus = async () => {
-  showBankDropdown.value = true
-  if (banks.value.length === 0) {
-    await fetchBanks()
-  }
-}
-
 // Handle bank selection
 const selectBank = (bank) => {
   userForm.value.bank = bank.code
@@ -302,11 +294,6 @@ const selectBank = (bank) => {
 const clearSelectedBank = () => {
   userForm.value.bank = ''
   bankSearch.value = ''
-}
-
-// Handle search input
-const handleBankSearch = () => {
-  showBankDropdown.value = true
 }
 
 // Close dropdown when clicking outside

@@ -375,10 +375,3 @@ onMounted(async () => {
   await loadSavedTransactions()
 })
 </script>
-
-
-
-
-
-
-
